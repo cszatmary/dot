@@ -1,7 +1,7 @@
 package config
 
 import (
-	"io/ioutil"
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -129,7 +129,7 @@ func Init() error {
 }
 
 func SaveLockfile() error {
-	lockfilePath := filepath.Join(os.Getenv("HOME"), ".dot.lock")
+	lockfilePath := filepath.Join(os.Getenv("HOME"), lockfileName)
 	lf, err := os.Create(lockfilePath)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to create lockfile at %s", lockfilePath)
@@ -166,24 +166,12 @@ func Setup(dotfilesDir string) error {
 	lockfile.Dotfiles = make(map[string]DotfileInfo)
 	for name, dotfile := range config.Dotfiles {
 		log.Debugf("Saving hashes of %s\n", name)
-		// Do lazy way of reading for now
-		// Dotfiles shouldn't be so bit that this is an issue
-		srcBuf, err := ioutil.ReadFile(dotfile.Src)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read contents of %s", dotfile.Src)
-		}
-
-		destBuf, err := ioutil.ReadFile(dotfile.Dest)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read contents of %s", dotfile.Dest)
-		}
-
-		srcHash, err := util.MD5Checksum(srcBuf)
+		srcHash, err := util.FileChecksum(dotfile.Src)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Src)
 		}
 
-		destHash, err := util.MD5Checksum(destBuf)
+		destHash, err := util.FileChecksum(dotfile.Dest)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Dest)
 		}
@@ -210,5 +198,84 @@ func Setup(dotfilesDir string) error {
 	log.Debugln("Finished creating backups")
 
 	err = SaveLockfile()
+	return errors.Wrap(err, "Failed to save lockfile")
+}
+
+func Apply(dotfileNames []string, force bool) error {
+	// Make sure it is safe to apply updates
+	// If there are any dotfiles whose hash is not equal to the hash
+	// in the lockfile then it has been manually modified
+	log.Debugln("Checking if dotfiles have been modified")
+	for _, name := range dotfileNames {
+		dotfile := config.Dotfiles[name]
+		dotfileInfo := lockfile.Dotfiles[name]
+
+		destHash, err := util.FileChecksum(dotfile.Dest)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Dest)
+		}
+
+		if !bytes.Equal(destHash, []byte(dotfileInfo.DestHash)) {
+			if !force {
+				return errors.Errorf("%s was manually modified", dotfile.Dest)
+			}
+
+			log.Debugf("dotfile %s was modified but force mode is enabled, updating...\n", name)
+			dotfileInfo.DestHash = string(destHash)
+			lockfile.Dotfiles[name] = dotfileInfo
+		}
+	}
+
+	// Update src hashes if they are out of date
+	log.Debugln("Checking if dotfile source hashes are out of date")
+	for _, name := range dotfileNames {
+		dotfile := config.Dotfiles[name]
+		dotfileInfo := lockfile.Dotfiles[name]
+
+		srcHash, err := util.FileChecksum(dotfile.Src)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Src)
+		}
+
+		if !bytes.Equal(srcHash, []byte(dotfileInfo.SrcHash)) {
+			log.Debugf("Source hash of %s out of date, updating...\n", name)
+			dotfileInfo.SrcHash = string(srcHash)
+			lockfile.Dotfiles[name] = dotfileInfo
+		}
+	}
+
+	// If the src and dest hashes are the same there is nothing to apply
+	log.Debugln("Checking if dotfiles are outdated")
+	outdatedNames := make([]string, 0, len(dotfileNames))
+	for _, name := range dotfileNames {
+		dotfileInfo := lockfile.Dotfiles[name]
+		if bytes.Equal([]byte(dotfileInfo.SrcHash), []byte(dotfileInfo.DestHash)) {
+			log.Infof("%s is up to date with source, skipping", name)
+		}
+
+		outdatedNames = append(outdatedNames, name)
+	}
+
+	// Apply src to dest
+	// TODO would be nice if this behaved like an automic transaction
+	// i.e. if one failed any successful ones would be rolled back
+	// and the user could retry rather than leaving in a partially successful state
+	// for now the user will just need to manually retry the ones that failed though
+	for _, name := range outdatedNames {
+		dotfile := config.Dotfiles[name]
+		err := file.CopyFile(dotfile.Src, dotfile.Dest)
+		if err != nil {
+			return errors.Wrapf(err, "failed to apply changes to %s", name)
+		}
+
+		// Update dest hash since dest was updated
+		dotfileInfo := lockfile.Dotfiles[name]
+		dotfileInfo.DestHash = dotfileInfo.SrcHash
+		log.Infof("Applied changes to dotfile %s", name)
+	}
+
+	log.Debugln("Finished applying changes to dotfiles")
+
+	err := SaveLockfile()
 	return errors.Wrap(err, "Failed to save lockfile")
 }

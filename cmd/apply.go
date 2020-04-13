@@ -1,13 +1,20 @@
 package cmd
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/TouchBistro/goutils/color"
 	"github.com/TouchBistro/goutils/fatal"
 	"github.com/cszatma/dot/config"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+type applyOptions struct {
+	force bool
+}
+
+var applyOpts applyOptions
 
 var applyCmd = &cobra.Command{
 	Use:   "apply [DOTFILES...]",
@@ -34,14 +41,16 @@ var applyCmd = &cobra.Command{
 			}
 		}
 
-		// Apply changes
-		for _, name := range dotfileNames {
-			fmt.Printf(color.Cyan("Applying %s\n"), name)
-			// Save last known hash in lockfile so we can warn the user that they might overwrite changed shit
+		log.Infof("Applying changes to the following dotfiles: %s", strings.Join(dotfileNames, ", "))
+		err := config.Apply(dotfileNames, applyOpts.force)
+		if err != nil {
+			fatal.ExitErr(err, "Failed to apply changes to dotfiles")
 		}
+		log.Infoln(color.Green("Successfully applied changes to dotfiles"))
 	},
 }
 
 func init() {
+	applyCmd.Flags().BoolVarP(&applyOpts.force, "force", "f", false, "Overwrite dotfile if it was manually modified")
 	rootCmd.AddCommand(applyCmd)
 }
