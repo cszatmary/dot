@@ -1,14 +1,13 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/TouchBistro/goutils/color"
 	"github.com/TouchBistro/goutils/fatal"
-	"github.com/TouchBistro/goutils/file"
 	"github.com/cszatma/dot/config"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -23,27 +22,17 @@ var setupCmd = &cobra.Command{
 	Short: "Setup dot to manage your dotfiles",
 	Run: func(cmd *cobra.Command, args []string) {
 		if config.IsSetup() && !force {
-			fmt.Println("dot is already setup. If you wish to set it up again, use the --force flag.")
+			log.Infoln("dot is already setup. If you wish to set it up again, use the --force flag.")
 			return
 		}
 
+		log.Infoln(color.Cyan("Setting up dot..."))
 		err := config.Setup(dotfilesPath)
 		if err != nil {
 			fatal.ExitErr(err, "Failed to setup dot")
 		}
 
-		for name, dotfile := range config.Config().Dotfiles {
-			fmt.Printf(color.Cyan("Creating backup of %s\n"), name)
-			backupPath := dotfile.Dest + ".bak"
-			err = file.CopyFile(dotfile.Dest, backupPath)
-			if err != nil {
-				fatal.ExitErrf(err, "Failed to create backup of %s at %s", name, backupPath)
-			}
-
-			fmt.Printf(color.Green("Created backup of %s at %s\n"), name, backupPath)
-		}
-
-		fmt.Println(color.Green("Successfully setup dot"))
+		log.Infoln(color.Green("Successfully setup dot"))
 	},
 }
 

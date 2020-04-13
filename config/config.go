@@ -1,6 +1,7 @@
 package config
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,7 +9,12 @@ import (
 	"github.com/TouchBistro/goutils/file"
 	"github.com/cszatma/dot/util"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	lockfileName = ".dot.lock"
 )
 
 var (
@@ -16,19 +22,25 @@ var (
 	lockfile Lockfile
 )
 
-type Dotfile struct {
+type DotfileConfig struct {
 	Src  string `yaml:"src"`
 	Dest string `yaml:"dest"`
 	OS   string `yaml:"os"`
 }
 
 type DotConfig struct {
-	Dotfiles map[string]Dotfile `yaml:"dotfiles"`
+	Dotfiles map[string]DotfileConfig `yaml:"dotfiles"`
+}
+
+type DotfileInfo struct {
+	SrcHash  string `yaml:"srcHash"`
+	DestHash string `yaml:"destHash"`
 }
 
 type Lockfile struct {
-	DotfilesDir string `yaml:"dotfilesDir"`
-	IsSetup     bool   `yaml:"setup"`
+	DotfilesDir string                 `yaml:"dotfilesDir"`
+	IsSetup     bool                   `yaml:"setup"`
+	Dotfiles    map[string]DotfileInfo `yaml:"dotfiles"`
 }
 
 func Config() *DotConfig {
@@ -90,28 +102,29 @@ func loadDotConfig() error {
 }
 
 func Init() error {
-	lockfilePath := filepath.Join(os.Getenv("HOME"), ".dot.lock")
+	lockfilePath := filepath.Join(os.Getenv("HOME"), lockfileName)
 	if !file.FileOrDirExists(lockfilePath) {
 		lockfile = Lockfile{}
-	} else {
-		lf, err := os.Open(lockfilePath)
-		if err != nil {
-			return errors.Wrapf(err, "Failed to open lockfile at path %s", lockfilePath)
-		}
-		defer lf.Close()
+		return nil
+	}
 
-		dec := yaml.NewDecoder(lf)
-		err = dec.Decode(&lockfile)
-		if err != nil {
-			return errors.Wrap(err, "Failed to decode lockfile")
-		}
+	lf, err := os.Open(lockfilePath)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to open lockfile at path %s", lockfilePath)
+	}
+	defer lf.Close()
+
+	dec := yaml.NewDecoder(lf)
+	err = dec.Decode(&lockfile)
+	if err != nil {
+		return errors.Wrap(err, "Failed to decode lockfile")
 	}
 
 	if !lockfile.IsSetup {
 		return nil
 	}
 
-	err := loadDotConfig()
+	err = loadDotConfig()
 	return errors.Wrap(err, "Failed to load dot config file")
 }
 
@@ -146,6 +159,55 @@ func Setup(dotfilesDir string) error {
 	if err != nil {
 		return errors.Wrap(err, "Failed to load dot config file")
 	}
+
+	// Get hashes for src and dest
+	// This will be used to determine if the dotfiles are out of date
+	log.Debugln("Saving hashes of dotfiles")
+	lockfile.Dotfiles = make(map[string]DotfileInfo)
+	for name, dotfile := range config.Dotfiles {
+		log.Debugf("Saving hashes of %s\n", name)
+		// Do lazy way of reading for now
+		// Dotfiles shouldn't be so bit that this is an issue
+		srcBuf, err := ioutil.ReadFile(dotfile.Src)
+		if err != nil {
+			return errors.Wrapf(err, "failed to read contents of %s", dotfile.Src)
+		}
+
+		destBuf, err := ioutil.ReadFile(dotfile.Dest)
+		if err != nil {
+			return errors.Wrapf(err, "failed to read contents of %s", dotfile.Dest)
+		}
+
+		srcHash, err := util.MD5Checksum(srcBuf)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Src)
+		}
+
+		destHash, err := util.MD5Checksum(destBuf)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Dest)
+		}
+
+		lockfile.Dotfiles[name] = DotfileInfo{
+			SrcHash:  string(srcHash),
+			DestHash: string(destHash),
+		}
+	}
+	log.Debugln("Finished saving hashes")
+
+	// Create backups of dotfiles
+	// This way we still have the original since dot will be messing with them
+	log.Debugln("Creating backups of dotfiles")
+	for name, dotfile := range config.Dotfiles {
+		log.Debugf("Creating backup of %s\n", name)
+
+		backupPath := dotfile.Dest + ".bak"
+		err = file.CopyFile(dotfile.Dest, backupPath)
+		if err != nil {
+			return errors.Wrapf(err, "Failed to create backup of %s at %s", name, backupPath)
+		}
+	}
+	log.Debugln("Finished creating backups")
 
 	err = SaveLockfile()
 	return errors.Wrap(err, "Failed to save lockfile")
