@@ -192,6 +192,11 @@ func Setup(dotfilesDir string) error {
 	// This way we still have the original since dot will be messing with them
 	log.Debugln("Creating backups of dotfiles")
 	for name, dotfile := range config.Dotfiles {
+		// Dotfile doesn't exist, nothing to backup
+		if !file.FileOrDirExists(dotfile.Dest) {
+			continue
+		}
+
 		log.Debugf("Creating backup of %s\n", name)
 
 		backupPath := dotfile.Dest + ".bak"
