@@ -271,6 +271,7 @@ func Apply(dotfileNames []string, force bool) error {
 		// Update dest hash since dest was updated
 		dotfileInfo := lockfile.Dotfiles[name]
 		dotfileInfo.DestHash = dotfileInfo.SrcHash
+		lockfile.Dotfiles[name] = dotfileInfo
 		log.Infof("Applied changes to dotfile %s", name)
 	}
 
