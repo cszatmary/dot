@@ -65,6 +65,7 @@ func loadDotConfig() error {
 		return errors.Wrap(err, "Failed to decode config file")
 	}
 
+	parsedDotfiles := make(map[string]DotfileConfig)
 	for name, dotfile := range config.Dotfiles {
 		// Remove dotfiles that are not for the current os
 		if dotfile.OS != "*" {
@@ -80,7 +81,7 @@ func loadDotConfig() error {
 			}
 
 			if !isValidOS {
-				delete(config.Dotfiles, name)
+				continue
 			}
 		}
 
@@ -95,9 +96,10 @@ func loadDotConfig() error {
 			dotfile.Dest = filepath.Join(os.Getenv("HOME"), base)
 		}
 
-		config.Dotfiles[name] = dotfile
+		parsedDotfiles[name] = dotfile
 	}
 
+	config.Dotfiles = parsedDotfiles
 	return nil
 }
 
