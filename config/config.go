@@ -173,9 +173,12 @@ func Setup(dotfilesDir string) error {
 			return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Src)
 		}
 
-		destHash, err := util.FileChecksum(dotfile.Dest)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Dest)
+		destHash := make([]byte, 0)
+		if file.FileOrDirExists(dotfile.Dest) {
+			destHash, err = util.FileChecksum(dotfile.Dest)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Dest)
+			}
 		}
 
 		lockfile.Dotfiles[name] = DotfileInfo{
@@ -212,9 +215,13 @@ func Apply(dotfileNames []string, force bool) error {
 		dotfile := config.Dotfiles[name]
 		dotfileInfo := lockfile.Dotfiles[name]
 
-		destHash, err := util.FileChecksum(dotfile.Dest)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Dest)
+		destHash := make([]byte, 0)
+		if file.FileOrDirExists(dotfile.Dest) {
+			var err error
+			destHash, err = util.FileChecksum(dotfile.Dest)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Dest)
+			}
 		}
 
 		if !bytes.Equal(destHash, []byte(dotfileInfo.DestHash)) {
