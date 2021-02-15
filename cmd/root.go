@@ -4,21 +4,36 @@ import (
 	"github.com/TouchBistro/goutils/color"
 	"github.com/TouchBistro/goutils/fatal"
 	"github.com/cszatma/dot/config"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-const version = "0.1.0"
+// Set by goreleaser when release build is created
+var version string
+
+type rootOptions struct {
+	verbose bool
+}
 
 var (
-	verbose bool
+	rootOpts rootOptions
+	logger   = logrus.StandardLogger()
 )
 
 var rootCmd = &cobra.Command{
 	Use:     "dot",
 	Version: version,
-	Short:   "dot is a CLI for managing dotfiles",
+	Short:   "dot is a CLI for managing dotfiles.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		fatal.ShowStackTraces(rootOpts.verbose)
+		if rootOpts.verbose {
+			logger.SetLevel(logrus.DebugLevel)
+		}
+		logger.SetFormatter(&logrus.TextFormatter{
+			DisableTimestamp: true,
+		})
+
+		// ACTION: this doesn't belong here
 		if cmd.Name() != "setup" && !config.IsSetup() {
 			fatal.Exit(color.Red("Error: dot has not been setup. Please run `dot setup`."))
 		}
@@ -26,22 +41,8 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
-
+	rootCmd.PersistentFlags().BoolVarP(&rootOpts.verbose, "verbose", "v", false, "enable verbose output")
 	cobra.OnInitialize(func() {
-		var logLevel log.Level
-		if verbose {
-			logLevel = log.DebugLevel
-		} else {
-			logLevel = log.InfoLevel
-			fatal.ShowStackTraces = false
-		}
-
-		log.SetLevel(logLevel)
-		log.SetFormatter(&log.TextFormatter{
-			DisableTimestamp: true,
-		})
-
 		err := config.Init()
 		if err != nil {
 			fatal.ExitErr(err, "Failed to read config file")
@@ -49,6 +50,7 @@ func init() {
 	})
 }
 
+// Execute runs the dot CLI.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fatal.ExitErr(err, "Failed executing command.")

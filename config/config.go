@@ -10,7 +10,7 @@ import (
 	"github.com/cszatma/dot/util"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -49,7 +49,7 @@ func Config() *DotConfig {
 
 func loadDotConfig() error {
 	configPath := filepath.Join(lockfile.DotfilesDir, "dot.yml")
-	if !file.FileOrDirExists(configPath) {
+	if !file.Exists(configPath) {
 		return errors.Errorf("No such file %s", configPath)
 	}
 
@@ -105,7 +105,7 @@ func loadDotConfig() error {
 
 func Init() error {
 	lockfilePath := filepath.Join(os.Getenv("HOME"), lockfileName)
-	if !file.FileOrDirExists(lockfilePath) {
+	if !file.Exists(lockfilePath) {
 		lockfile = Lockfile{}
 		return nil
 	}
@@ -174,7 +174,7 @@ func Setup(dotfilesDir string) error {
 		}
 
 		destHash := make([]byte, 0)
-		if file.FileOrDirExists(dotfile.Dest) {
+		if file.Exists(dotfile.Dest) {
 			destHash, err = util.FileChecksum(dotfile.Dest)
 			if err != nil {
 				return errors.Wrapf(err, "failed to get checksum of %s", dotfile.Dest)
@@ -193,7 +193,7 @@ func Setup(dotfilesDir string) error {
 	log.Debugln("Creating backups of dotfiles")
 	for name, dotfile := range config.Dotfiles {
 		// Dotfile doesn't exist, nothing to backup
-		if !file.FileOrDirExists(dotfile.Dest) {
+		if !file.Exists(dotfile.Dest) {
 			continue
 		}
 
@@ -221,7 +221,7 @@ func Apply(dotfileNames []string, force bool) error {
 		dotfileInfo := lockfile.Dotfiles[name]
 
 		destHash := make([]byte, 0)
-		if file.FileOrDirExists(dotfile.Dest) {
+		if file.Exists(dotfile.Dest) {
 			var err error
 			destHash, err = util.FileChecksum(dotfile.Dest)
 			if err != nil {
