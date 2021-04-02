@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/TouchBistro/goutils/file"
 	"github.com/cszatmary/dot/dotfiles"
@@ -44,10 +45,10 @@ func (noopDebugger) Debugf(format string, args ...interface{}) {}
 
 // Client provides the API for managing dotfiles with dot.
 type Client struct {
-	// dir is the directory where dot stores configuration.
-	dir      string
 	lf       *lockfile
 	registry *dotfiles.Registry
+	// configurable
+	homeDir  string
 	debugger Debugger
 }
 
@@ -63,12 +64,13 @@ func New(opts ...Option) (*Client, error) {
 	if c.debugger == nil {
 		c.debugger = noopDebugger{}
 	}
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to find user home directory")
+	if c.homeDir == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to find user home directory")
+		}
+		c.homeDir = homeDir
 	}
-	c.dir = filepath.Join(homeDir, ".config", "dot")
 
 	lfp := c.lockfilePath()
 	f, err := os.Open(lfp)
@@ -90,7 +92,7 @@ func New(opts ...Option) (*Client, error) {
 	}
 
 	// dot is setup, load registry
-	c.registry, err = dotfiles.NewRegistry(os.DirFS(c.lf.RegistryDir), homeDir)
+	c.registry, err = dotfiles.NewRegistry(os.DirFS(c.lf.RegistryDir))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load dot registry at %s", c.lf.RegistryDir)
 	}
@@ -99,6 +101,13 @@ func New(opts ...Option) (*Client, error) {
 
 // Option is a function that takes a Client instance and applies a configuration to it.
 type Option func(*Client)
+
+// WithHomeDir sets the directory that the client should use when the home directory is needed.
+func WithHomeDir(dir string) Option {
+	return func(c *Client) {
+		c.homeDir = dir
+	}
+}
 
 // WithDebugger sets a Debugger that should be used by the client to write debug messages.
 func WithDebugger(d Debugger) Option {
@@ -112,12 +121,17 @@ func (c *Client) IsSetup() bool {
 	return c.lf.RegistryDir != ""
 }
 
+// configPath returns the root dir where dot stores config.
+func (c *Client) configPath() string {
+	return filepath.Join(c.homeDir, ".config", "dot")
+}
+
 func (c *Client) lockfilePath() string {
-	return filepath.Join(c.dir, "dot.lock")
+	return filepath.Join(c.configPath(), "dot.lock")
 }
 
 func (c *Client) dotfileBackupPath(df dotfiles.Dotfile) string {
-	return filepath.Join(c.dir, "backups", df.SrcPath) + ".bak"
+	return filepath.Join(c.configPath(), "backups", df.SrcPath) + ".bak"
 }
 
 func (c *Client) writeLockfile() error {
@@ -147,12 +161,8 @@ func (c *Client) Setup(registryDir string, force bool) error {
 	if c.lf.RegistryDir != "" && c.lf.RegistryDir != registryDir && !force {
 		return errors.Wrap(ErrSetup, registryDir)
 	}
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return errors.Wrap(err, "failed to find user home directory")
-	}
-	c.registry, err = dotfiles.NewRegistry(os.DirFS(registryDir), homeDir)
+	var err error
+	c.registry, err = dotfiles.NewRegistry(os.DirFS(registryDir))
 	if err != nil {
 		return errors.Wrapf(err, "failed to load dot registry at %s", registryDir)
 	}
@@ -179,6 +189,7 @@ func (c *Client) Setup(registryDir string, force bool) error {
 			continue
 		}
 
+		df.DstPath = expandTilde(df.DstPath, c.homeDir)
 		f, err := os.Open(df.DstPath)
 		if errors.Is(err, os.ErrNotExist) {
 			// It's fine if dst doesn't exist, it will be created by Apply
@@ -245,6 +256,7 @@ func (c *Client) Apply(force bool, names ...string) error {
 			return errors.Wrap(ErrNotSetup, df.Name)
 		}
 
+		df.DstPath = expandTilde(df.DstPath, c.homeDir)
 		f, err := os.Open(df.DstPath)
 		if errors.Is(err, os.ErrNotExist) {
 			// Dst doesn't exist, will be created below
@@ -369,4 +381,13 @@ func md5Hash(rc io.ReadCloser) ([]byte, error) {
 		return nil, err
 	}
 	return hash.Sum(nil), nil
+}
+
+// expandTilde replaces a ~ at the start of a path with the given homeDir.
+func expandTilde(p, homeDir string) string {
+	if strings.HasPrefix(p, "~") {
+		base := strings.TrimPrefix(p, "~")
+		p = filepath.Join(homeDir, base)
+	}
+	return p
 }

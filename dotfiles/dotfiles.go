@@ -24,9 +24,8 @@ type Dotfile struct {
 	SrcPath string `yaml:"src"`
 	// DstPath is the path dotfile on the OS filesystem.
 	// It must be absolute i.e. start with a slash.
-	// The one exception to this rule is it maybe start with '~/'
-	// which will be substituted with the path to the home directory
-	// of the current user.
+	// The one exception to this rule is it maybe start with '~/'.
+	// It is up to the caller to decide how to handle '~'.
 	DstPath string `yaml:"dst"`
 	// OS is a list of supported operating systems for this dotfile.
 	// If OS is empty, it is interpreted as all operating systems being supported.
@@ -49,7 +48,7 @@ type Registry struct {
 // NewRegistry creates a new Registry object from fsys. fsys must contain
 // a `dot.yml` file that holds the configuration for the registry.
 // NewRegistry will read `dot.yml` and return an validation errors encountered.
-func NewRegistry(fsys fs.FS, homeDir string) (*Registry, error) {
+func NewRegistry(fsys fs.FS) (*Registry, error) {
 	const filename = "dot.yml"
 	f, err := fsys.Open(filename)
 	if err != nil {
@@ -80,12 +79,9 @@ func NewRegistry(fsys fs.FS, homeDir string) (*Registry, error) {
 			msgs = append(msgs, "src path is invalid")
 		}
 
-		// Validate DstPath
-		if strings.HasPrefix(df.DstPath, "~") {
-			base := strings.TrimPrefix(df.DstPath, "~")
-			df.DstPath = filepath.Join(homeDir, base)
-		}
-		if !filepath.IsAbs(df.DstPath) {
+		// Validate DstPath. DstPath must be an absolute path (i.e. begin with `/`),
+		// with the one exception being it may start with `~`.
+		if !strings.HasPrefix(df.DstPath, "~") && !filepath.IsAbs(df.DstPath) {
 			msgs = append(msgs, "dst must be an absolute path")
 		}
 
