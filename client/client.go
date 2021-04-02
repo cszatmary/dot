@@ -37,6 +37,11 @@ type Debugger interface {
 	Debugf(format string, args ...interface{})
 }
 
+// noopDebugger is a Debugger with a no-op Debugf method.
+type noopDebugger struct{}
+
+func (noopDebugger) Debugf(format string, args ...interface{}) {}
+
 // Client provides the API for managing dotfiles with dot.
 type Client struct {
 	// dir is the directory where dot stores configuration.
@@ -53,6 +58,10 @@ func New(opts ...Option) (*Client, error) {
 	}
 	for _, opt := range opts {
 		opt(c)
+	}
+	// Create a noopDebugger if none was set to prevent panics on calls to Debugf
+	if c.debugger == nil {
+		c.debugger = noopDebugger{}
 	}
 
 	homeDir, err := os.UserHomeDir()
