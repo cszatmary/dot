@@ -58,4 +58,9 @@ Temporary Items
 # Ignore all local history of files
 .history
 
+# Test coverage
+coverage/
+
+completions/
+dist/
 dot
