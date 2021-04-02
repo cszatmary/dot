@@ -28,12 +28,12 @@ var setupCmd = &cobra.Command{
 			setupOpts.dotfilesPath = filepath.Join(homeDir, ".dotfiles")
 		}
 
-		logger.Info("Setting up dot...")
+		logger.Printf("Setting up dot...")
 		err := dotClient.Setup(setupOpts.dotfilesPath, setupOpts.force)
 		if err != nil {
 			fatal.ExitErr(err, "Failed to setup dot")
 		}
-		logger.Info("Successfully setup dot")
+		logger.Printf("Successfully setup dot")
 	},
 }
 

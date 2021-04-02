@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/TouchBistro/goutils/fatal"
 	"github.com/cszatmary/dot/client"
-	"github.com/sirupsen/logrus"
+	"github.com/cszatmary/dot/internal/log"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +18,7 @@ type rootOptions struct {
 
 var (
 	rootOpts  rootOptions
-	logger    = logrus.StandardLogger()
+	logger    = log.New(os.Stderr)
 	dotClient *client.Client
 )
 
@@ -26,12 +28,7 @@ var rootCmd = &cobra.Command{
 	Short:   "dot is a CLI for managing dotfiles.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		fatal.ShowStackTraces(rootOpts.verbose)
-		if rootOpts.verbose {
-			logger.SetLevel(logrus.DebugLevel)
-		}
-		logger.SetFormatter(&logrus.TextFormatter{
-			DisableTimestamp: true,
-		})
+		logger.SetDebug(rootOpts.verbose)
 		var err error
 		dotClient, err = client.New(client.WithDebugger(logger))
 		if err != nil {

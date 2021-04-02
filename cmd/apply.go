@@ -20,12 +20,12 @@ var applyCmd = &cobra.Command{
 			fatal.Exit("dot has not been setup. Please run `dot setup`.")
 		}
 
-		logger.Info("Applying changes to dotfiles")
+		logger.Printf("Applying changes to dotfiles")
 		err := dotClient.Apply(applyOpts.force, args...)
 		if err != nil {
 			fatal.ExitErr(err, "Failed to apply changes to dotfiles")
 		}
-		logger.Info("Successfully applied changes to dotfiles")
+		logger.Printf("Successfully applied changes to dotfiles")
 	},
 }
 
