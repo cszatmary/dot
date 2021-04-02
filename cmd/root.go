@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"github.com/TouchBistro/goutils/color"
 	"github.com/TouchBistro/goutils/fatal"
-	"github.com/cszatma/dot/config"
+	"github.com/cszatmary/dot/client"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -16,8 +15,9 @@ type rootOptions struct {
 }
 
 var (
-	rootOpts rootOptions
-	logger   = logrus.StandardLogger()
+	rootOpts  rootOptions
+	logger    = logrus.StandardLogger()
+	dotClient *client.Client
 )
 
 var rootCmd = &cobra.Command{
@@ -32,22 +32,16 @@ var rootCmd = &cobra.Command{
 		logger.SetFormatter(&logrus.TextFormatter{
 			DisableTimestamp: true,
 		})
-
-		// ACTION: this doesn't belong here
-		if cmd.Name() != "setup" && !config.IsSetup() {
-			fatal.Exit(color.Red("Error: dot has not been setup. Please run `dot setup`."))
+		var err error
+		dotClient, err = client.New(client.WithDebugger(logger))
+		if err != nil {
+			fatal.ExitErr(err, "Failed to initialize dot")
 		}
 	},
 }
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&rootOpts.verbose, "verbose", "v", false, "enable verbose output")
-	cobra.OnInitialize(func() {
-		err := config.Init()
-		if err != nil {
-			fatal.ExitErr(err, "Failed to read config file")
-		}
-	})
 }
 
 // Execute runs the dot CLI.
