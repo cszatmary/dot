@@ -157,6 +157,7 @@ func (c *Client) writeLockfile() error {
 // If registryDir is different than the one used by dot, Setup will return ErrSetup
 // unless force is true, in which case it will overwrite the current registry dir.
 func (c *Client) Setup(registryDir string, force bool) error {
+	registryDir = expandTilde(registryDir, c.homeDir)
 	// Check if already setup
 	if c.lf.RegistryDir != "" && c.lf.RegistryDir != registryDir && !force {
 		return errors.Wrap(ErrSetup, registryDir)
