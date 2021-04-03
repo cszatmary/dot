@@ -11,7 +11,7 @@ import (
 
 func TestSetupAndApply(t *testing.T) {
 	homeDir := t.TempDir()
-	os.WriteFile(
+	err := os.WriteFile(
 		filepath.Join(homeDir, ".gitconfig"),
 		[]byte(`[pull]
 	ff = only
@@ -19,11 +19,17 @@ func TestSetupAndApply(t *testing.T) {
 `),
 		0o755,
 	)
-	os.WriteFile(
+	if err != nil {
+		t.Fatalf("want nil error, got %v", err)
+	}
+	err = os.WriteFile(
 		filepath.Join(homeDir, ".zshrc"),
 		[]byte(`export PATH="/usr/local/bin:$PATH"`),
 		0o755,
 	)
+	if err != nil {
+		t.Fatalf("want nil error, got %v", err)
+	}
 
 	dotClient, err := client.New(client.WithHomeDir(homeDir))
 	if err != nil {

@@ -1,0 +1,49 @@
+version: 2.1
+
+gomod_cache_key: &gomod_cache_key dot-deps-20210401-{{ checksum "go.sum" }}
+shed_cache_key: &shed_cache_key dot-tools-20210401-{{ checksum "shed.lock" }}
+
+jobs:
+  lint-build-test:
+    docker:
+      - image: cszatmary/cimg-go:1.16
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore dependency cache
+          keys:
+            - *gomod_cache_key
+      - restore_cache:
+          name: Restore tool dependency cache
+          keys:
+            - *shed_cache_key
+      - run:
+          name: Install dependencies
+          command: make setup
+      - save_cache:
+          name: Cache dependencies
+          key: *gomod_cache_key
+          paths:
+            - ~/go/pkg
+      - save_cache:
+          name: Cache tool dependencies
+          key: *shed_cache_key
+          paths:
+            - ~/.cache/shed
+      - run:
+          name: Check files are formatted
+          command: make check-fmt
+      - run:
+          name: Run linter
+          command: make lint
+      - run:
+          name: Build dot
+          command: make build-snapshot
+      - run:
+          name: Run tests
+          command: make test-ci
+
+workflows:
+  lint-build-test:
+    jobs:
+      - lint-build-test

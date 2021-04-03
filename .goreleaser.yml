@@ -1,0 +1,61 @@
+project_name: dot
+
+before:
+  hooks:
+    - go mod download
+    - make completions
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - 386
+      - amd64
+      - arm
+      - arm64
+    ldflags:
+      - -s -w -X github.com/cszatmary/dot/cmd.version={{.Version}}
+
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+    files:
+      - README.md
+      - LICENSE
+      - completions/*
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+
+release:
+  github:
+    owner: cszatmary
+    name: dot
+
+brews:
+  - tap:
+      owner: cszatmary
+      name: homebrew-tap
+    commit_author:
+      name: cszatmary
+      email: cs@christopherszatmary.com
+    folder: Formula
+    description: "A CLI for managing dotfiles."
+    test: |
+      system "#{bin}/dot --version"
+    install: |
+      bin.install "dot"
+      bash_completion.install "dist/completions/dot.bash"
+      zsh_completion.install "dist/completions/_dot"

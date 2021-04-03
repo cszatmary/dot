@@ -37,11 +37,11 @@ func (l *Logger) log(s string) error {
 }
 
 func (l *Logger) Printf(format string, v ...interface{}) {
-	l.log(fmt.Sprintf(format, v...))
+	_ = l.log(fmt.Sprintf(format, v...))
 }
 
 func (l *Logger) Debugf(format string, v ...interface{}) {
 	if l.debugEnabled {
-		l.log(fmt.Sprintf("DEBUG: "+format, v...))
+		_ = l.log(fmt.Sprintf("DEBUG: "+format, v...))
 	}
 }
