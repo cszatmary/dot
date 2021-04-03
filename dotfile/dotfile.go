@@ -1,5 +1,5 @@
-// Package dotfiles holds functionality for working with dotfiles and registries.
-package dotfiles
+// Package dotfile holds functionality for working with dotfiles and registries.
+package dotfile
 
 import (
 	"errors"

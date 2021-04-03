@@ -1,4 +1,4 @@
-package dotfiles_test
+package dotfile_test
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/cszatmary/dot/dotfiles"
+	"github.com/cszatmary/dot/dotfile"
 )
 
 func TestNewRegistryValidationError(t *testing.T) {
@@ -25,15 +25,15 @@ func TestNewRegistryValidationError(t *testing.T) {
 `),
 		},
 	}
-	_, err := dotfiles.NewRegistry(mfs)
-	var errs dotfiles.ErrorList
+	_, err := dotfile.NewRegistry(mfs)
+	var errs dotfile.ErrorList
 	if !errors.As(err, &errs) {
 		t.Fatalf("got error %v with type %T, wanted a dotfiles.ErrorList", err, err)
 	}
 
 	var gotNames []string
 	for _, err := range errs {
-		var validationErr *dotfiles.ValidationError
+		var validationErr *dotfile.ValidationError
 		if !errors.As(err, &validationErr) {
 			t.Errorf("got error %v with type %T, wanted a *dotfiles.ValidationError", err, err)
 		}
@@ -47,7 +47,7 @@ func TestNewRegistryValidationError(t *testing.T) {
 }
 
 func TestRegistryDotfiles(t *testing.T) {
-	registry, err := dotfiles.NewRegistry(createRegistryFixture())
+	registry, err := dotfile.NewRegistry(createRegistryFixture())
 	if err != nil {
 		t.Fatalf("want nil error, got %v", err)
 	}
@@ -55,7 +55,7 @@ func TestRegistryDotfiles(t *testing.T) {
 	if err != nil {
 		t.Errorf("want nil error, got %v", err)
 	}
-	want := []dotfiles.Dotfile{
+	want := []dotfile.Dotfile{
 		{Name: "git", SrcPath: "git/gitconfig", DstPath: "~/.gitconfig"},
 		{Name: "vim", SrcPath: "vim/vimrc", DstPath: "~/.vimrc"},
 		{Name: "zsh", SrcPath: "zsh/zshrc", DstPath: "~/.zshrc"},
@@ -66,7 +66,7 @@ func TestRegistryDotfiles(t *testing.T) {
 }
 
 func TestRegistryDotfilesFiltered(t *testing.T) {
-	registry, err := dotfiles.NewRegistry(createRegistryFixture())
+	registry, err := dotfile.NewRegistry(createRegistryFixture())
 	if err != nil {
 		t.Fatalf("want nil error, got %v", err)
 	}
@@ -74,7 +74,7 @@ func TestRegistryDotfilesFiltered(t *testing.T) {
 	if err != nil {
 		t.Errorf("want nil error, got %v", err)
 	}
-	want := []dotfiles.Dotfile{
+	want := []dotfile.Dotfile{
 		{Name: "git", SrcPath: "git/gitconfig", DstPath: "~/.gitconfig"},
 		{Name: "zsh", SrcPath: "zsh/zshrc", DstPath: "~/.zshrc"},
 	}
@@ -84,18 +84,18 @@ func TestRegistryDotfilesFiltered(t *testing.T) {
 }
 
 func TestRegistryDotfilesNotFound(t *testing.T) {
-	registry, err := dotfiles.NewRegistry(createRegistryFixture())
+	registry, err := dotfile.NewRegistry(createRegistryFixture())
 	if err != nil {
 		t.Fatalf("want nil error, got %v", err)
 	}
 	_, err = registry.Dotfiles("git", "foo")
-	if !errors.Is(err, dotfiles.ErrNotFound) {
+	if !errors.Is(err, dotfile.ErrNotFound) {
 		t.Errorf("got %v, want dotfiles.ErrNotFound", err)
 	}
 }
 
 func TestRegistryOpenDotfile(t *testing.T) {
-	registry, err := dotfiles.NewRegistry(createRegistryFixture())
+	registry, err := dotfile.NewRegistry(createRegistryFixture())
 	if err != nil {
 		t.Fatalf("want nil error, got %v", err)
 	}
@@ -118,12 +118,12 @@ func TestRegistryOpenDotfile(t *testing.T) {
 }
 
 func TestRegistryOpenDotfileNotFound(t *testing.T) {
-	registry, err := dotfiles.NewRegistry(createRegistryFixture())
+	registry, err := dotfile.NewRegistry(createRegistryFixture())
 	if err != nil {
 		t.Fatalf("want nil error, got %v", err)
 	}
 	_, err = registry.OpenDotfile("foo")
-	if !errors.Is(err, dotfiles.ErrNotFound) {
+	if !errors.Is(err, dotfile.ErrNotFound) {
 		t.Errorf("got %v, want dotfiles.ErrNotFound", err)
 	}
 }

@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/TouchBistro/goutils/file"
-	"github.com/cszatmary/dot/dotfiles"
+	"github.com/cszatmary/dot/dotfile"
 	"github.com/pkg/errors"
 )
 
@@ -46,7 +46,7 @@ func (noopDebugger) Debugf(format string, args ...interface{}) {}
 // Client provides the API for managing dotfiles with dot.
 type Client struct {
 	lf       *lockfile
-	registry *dotfiles.Registry
+	registry *dotfile.Registry
 	// configurable
 	homeDir  string
 	debugger Debugger
@@ -92,7 +92,7 @@ func New(opts ...Option) (*Client, error) {
 	}
 
 	// dot is setup, load registry
-	c.registry, err = dotfiles.NewRegistry(os.DirFS(c.lf.RegistryDir))
+	c.registry, err = dotfile.NewRegistry(os.DirFS(c.lf.RegistryDir))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load dot registry at %s", c.lf.RegistryDir)
 	}
@@ -130,7 +130,7 @@ func (c *Client) lockfilePath() string {
 	return filepath.Join(c.configPath(), "dot.lock")
 }
 
-func (c *Client) dotfileBackupPath(df dotfiles.Dotfile) string {
+func (c *Client) dotfileBackupPath(df dotfile.Dotfile) string {
 	return filepath.Join(c.configPath(), "backups", df.SrcPath) + ".bak"
 }
 
@@ -162,7 +162,7 @@ func (c *Client) Setup(registryDir string, force bool) error {
 		return errors.Wrap(ErrSetup, registryDir)
 	}
 	var err error
-	c.registry, err = dotfiles.NewRegistry(os.DirFS(registryDir))
+	c.registry, err = dotfile.NewRegistry(os.DirFS(registryDir))
 	if err != nil {
 		return errors.Wrapf(err, "failed to load dot registry at %s", registryDir)
 	}
@@ -238,7 +238,7 @@ func (c *Client) Apply(force bool, names ...string) error {
 		return errors.Wrap(err, "failed to get dotfiles from registry")
 	}
 	// Filter out dotfiles not supported by the current OS
-	var dfs []dotfiles.Dotfile
+	var dfs []dotfile.Dotfile
 	for _, df := range retrieved {
 		if supportsOS(df) {
 			dfs = append(dfs, df)
@@ -282,7 +282,7 @@ func (c *Client) Apply(force bool, names ...string) error {
 
 	// Check if lockfiles are out of date
 	type outdatedLockfile struct {
-		df      dotfiles.Dotfile
+		df      dotfile.Dotfile
 		newHash string
 	}
 	var outdated []outdatedLockfile
@@ -323,7 +323,7 @@ func (c *Client) Apply(force bool, names ...string) error {
 	return nil
 }
 
-func (c *Client) copyDotfile(df dotfiles.Dotfile) error {
+func (c *Client) copyDotfile(df dotfile.Dotfile) error {
 	dir := filepath.Dir(df.DstPath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %q: %w", dir, err)
@@ -354,7 +354,7 @@ func (c *Client) copyDotfile(df dotfiles.Dotfile) error {
 // Utils
 
 // supportsOS checks whether the dotfile supports the current OS.
-func supportsOS(df dotfiles.Dotfile) bool {
+func supportsOS(df dotfile.Dotfile) bool {
 	// No OSes defined means all are supported
 	if len(df.OS) == 0 {
 		return true
