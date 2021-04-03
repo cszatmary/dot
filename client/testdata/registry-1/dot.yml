@@ -1,0 +1,7 @@
+dotfiles:
+  git:
+    src: git/gitconfig
+    dst: ~/.gitconfig
+  zsh:
+    src: zsh/zshrc
+    dst: ~/.zshrc
