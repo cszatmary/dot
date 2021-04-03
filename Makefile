@@ -4,7 +4,7 @@ COVERPKGS = ./client,./dotfile,./internal/log
 # Get all dependencies
 setup:
 	@echo Installing dependencies
-	@go mod download
+	@go mod tidy
 	@echo Installing tool dependencies
 	@shed install
 	@shed run go-fish install
