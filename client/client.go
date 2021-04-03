@@ -2,6 +2,7 @@ package client
 
 import (
 	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
@@ -184,8 +185,8 @@ func (c *Client) Setup(registryDir string, force bool) error {
 		if !supportsOS(df) {
 			continue
 		}
-		// Check if already setup, and ignore if so
-		if _, ok := c.lf.Dotfiles[df.Name]; ok {
+		// Check if already setup, and ignore if so unless in force mode
+		if _, ok := c.lf.Dotfiles[df.Name]; ok && !force {
 			c.debugger.Debugf("Dotfile %s already setup, skipping", df.Name)
 			continue
 		}
@@ -376,13 +377,13 @@ func supportsOS(df dotfile.Dotfile) bool {
 
 // md5Hash returns the md5 hash of the data read from rc.
 // md5Hash will close rc when it is finished.
-func md5Hash(rc io.ReadCloser) ([]byte, error) {
+func md5Hash(rc io.ReadCloser) (string, error) {
 	defer rc.Close()
 	hash := md5.New()
 	if _, err := io.Copy(hash, rc); err != nil {
-		return nil, err
+		return "", err
 	}
-	return hash.Sum(nil), nil
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 // expandTilde replaces a ~ at the start of a path with the given homeDir.
