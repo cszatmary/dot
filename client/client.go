@@ -324,12 +324,13 @@ func (c *Client) Apply(force bool, names ...string) error {
 }
 
 func (c *Client) copyDotfile(df dotfile.Dotfile) error {
+	df.DstPath = expandTilde(df.DstPath, c.homeDir)
 	dir := filepath.Dir(df.DstPath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %q: %w", dir, err)
 	}
 
-	srcFile, err := c.registry.OpenDotfile(df.SrcPath)
+	srcFile, err := c.registry.OpenDotfile(df.Name)
 	if err != nil {
 		return fmt.Errorf("failed to open source dotfile %q: %w", df.SrcPath, err)
 	}
