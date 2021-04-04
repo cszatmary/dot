@@ -6,7 +6,7 @@ import (
 )
 
 type setupOptions struct {
-	dotfilesPath string
+	registryPath string
 	force        bool
 }
 
@@ -18,7 +18,7 @@ var setupCmd = &cobra.Command{
 	Short: "Setup dot to manage your dotfiles",
 	Run: func(cmd *cobra.Command, args []string) {
 		logger.Printf("Setting up dot...")
-		err := dotClient.Setup(setupOpts.dotfilesPath, setupOpts.force)
+		err := dotClient.Setup(setupOpts.registryPath, setupOpts.force)
 		if err != nil {
 			fatal.ExitErr(err, "Failed to setup dot")
 		}
@@ -27,7 +27,7 @@ var setupCmd = &cobra.Command{
 }
 
 func init() {
-	setupCmd.Flags().StringVarP(&setupOpts.dotfilesPath, "dotfiles-path", "d", "~/.dotfiles", "path to directory where dotfile sources are located")
+	setupCmd.Flags().StringVarP(&setupOpts.registryPath, "registry", "r", "~/.dotfiles", "path to directory where dotfile sources are located")
 	setupCmd.Flags().BoolVarP(&setupOpts.force, "force", "f", false, "Re-setup dot with a new dotfiles source")
 	rootCmd.AddCommand(setupCmd)
 }
