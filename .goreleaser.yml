@@ -57,5 +57,5 @@ brews:
       system "#{bin}/dot --version"
     install: |
       bin.install "dot"
-      bash_completion.install "dist/completions/dot.bash"
-      zsh_completion.install "dist/completions/_dot"
+      bash_completion.install "completions/dot.bash"
+      zsh_completion.install "completions/_dot"
