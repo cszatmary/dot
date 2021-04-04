@@ -28,8 +28,8 @@ release:
 # Generate shell completions for distribution
 completions:
 	@mkdir -p completions
-	@shed completions bash > completions/dot.bash
-	@shed completions zsh > completions/_dot
+	@go run main.go completions bash > completions/dot.bash
+	@go run main.go completions zsh > completions/_dot
 .PHONY: completions
 
 # Clean all build artifacts
