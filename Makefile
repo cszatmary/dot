@@ -19,7 +19,10 @@ build-snapshot:
 .PHONY: build-snapshot
 
 release:
-	@shed run goreleaser release -- --rm-dist
+	$(if $(version),,$(error version variable is not set))
+	git tag -a v$(version) -m "v$(version)"
+	git push origin v$(version)
+	shed run goreleaser release -- --rm-dist
 .PHONY: release
 
 # Generate shell completions for distribution
