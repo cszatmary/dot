@@ -1,49 +1,76 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
+	"runtime/debug"
 
-	"github.com/TouchBistro/goutils/fatal"
 	"github.com/cszatmary/dot/client"
 	"github.com/cszatmary/dot/internal/log"
 	"github.com/spf13/cobra"
 )
 
-// Set by goreleaser when release build is created
+// Set by goreleaser when release build is created.
 var version string
-
-type rootOptions struct {
-	verbose bool
-}
-
-var (
-	rootOpts  rootOptions
-	logger    = log.New(os.Stderr)
-	dotClient *client.Client
-)
-
-var rootCmd = &cobra.Command{
-	Use:     "dot",
-	Version: version,
-	Short:   "dot is a CLI for managing dotfiles.",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		fatal.ShowStackTraces(rootOpts.verbose)
-		logger.SetDebug(rootOpts.verbose)
-		var err error
-		dotClient, err = client.New(client.WithDebugger(logger))
-		if err != nil {
-			fatal.ExitErr(err, "Failed to initialize dot")
-		}
-	},
-}
-
-func init() {
-	rootCmd.PersistentFlags().BoolVarP(&rootOpts.verbose, "verbose", "v", false, "enable verbose output")
-}
 
 // Execute runs the dot CLI.
 func Execute() {
+	var c container
+	rootCmd := newRootCommand(&c)
 	if err := rootCmd.Execute(); err != nil {
-		fatal.ExitErr(err, "Failed executing command.")
+		if c.opts.verbose {
+			fmt.Fprintf(os.Stderr, "Error: %+v\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		}
+		os.Exit(1)
 	}
+}
+
+// container stores all the dependencies that can be used by commands.
+type container struct {
+	logger    *log.Logger
+	dotClient *client.Client
+	opts      struct {
+		verbose bool
+	}
+}
+
+func newRootCommand(c *container) *cobra.Command {
+	// Set version if built from source
+	if version == "" {
+		version = "source"
+		if info, available := debug.ReadBuildInfo(); available {
+			version = info.Main.Version
+		}
+	}
+	rootCmd := &cobra.Command{
+		Use:     "dot",
+		Version: version,
+		Short:   "dot is a CLI for managing dotfiles.",
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
+		// cobra prints errors returned from RunE by default. Disable that since we handle errors ourselves.
+		SilenceErrors: true,
+		// cobra prints command usage by default if RunE returns an error.
+		SilenceUsage: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			c.logger = log.New(os.Stderr)
+			c.logger.SetDebug(c.opts.verbose)
+			dotClient, err := client.New(client.WithDebugger(c.logger))
+			if err != nil {
+				return fmt.Errorf("failed to setup dot: %w", err)
+			}
+			c.dotClient = dotClient
+			return nil
+		},
+	}
+	rootCmd.AddCommand(
+		newApplyCommand(c),
+		newCompletionsCommand(),
+		newSetupCommand(c),
+	)
+	rootCmd.PersistentFlags().BoolVarP(&c.opts.verbose, "verbose", "v", false, "enable verbose output")
+	return rootCmd
 }
