@@ -18,7 +18,7 @@ or use a tool like [curl](https://curl.se/) or [wget](https://www.gnu.org/softwa
 
 ### Install from source
 
-Required Go version >= 1.16.
+Required Go version >= 1.17.
 
 ```
 go get github.com/cszatmary/dot

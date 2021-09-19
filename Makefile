@@ -10,7 +10,7 @@ setup: ## Install all dependencies
 	@echo Installing dependencies
 	@go mod tidy
 	@echo Installing tool dependencies
-	@shed install
+	@shed get
 	@shed run go-fish install
 .PHONY: setup
 

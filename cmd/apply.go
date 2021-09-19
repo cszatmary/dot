@@ -1,35 +1,32 @@
 package cmd
 
 import (
-	"github.com/TouchBistro/goutils/fatal"
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
-type applyOptions struct {
-	force bool
-}
-
-var applyOpts applyOptions
-
-var applyCmd = &cobra.Command{
-	Use:   "apply [DOTFILES...]",
-	Args:  cobra.ArbitraryArgs,
-	Short: "Apply dotfile changes",
-	Run: func(cmd *cobra.Command, args []string) {
-		if !dotClient.IsSetup() {
-			fatal.Exit("dot has not been setup. Please run `dot setup`.")
-		}
-
-		logger.Printf("Applying changes to dotfiles")
-		err := dotClient.Apply(applyOpts.force, args...)
-		if err != nil {
-			fatal.ExitErr(err, "Failed to apply changes to dotfiles")
-		}
-		logger.Printf("Successfully applied changes to dotfiles")
-	},
-}
-
-func init() {
+func newApplyCommand(c *container) *cobra.Command {
+	var applyOpts struct {
+		force bool
+	}
+	applyCmd := &cobra.Command{
+		Use:   "apply [DOTFILES...]",
+		Args:  cobra.ArbitraryArgs,
+		Short: "Apply dotfile changes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !c.dotClient.IsSetup() {
+				return fmt.Errorf("dot has not been setup, run `dot setup` to set it up")
+			}
+			c.logger.Printf("Applying changes to dotfiles")
+			err := c.dotClient.Apply(applyOpts.force, args...)
+			if err != nil {
+				return err
+			}
+			c.logger.Printf("Successfully applied changes to dotfiles")
+			return nil
+		},
+	}
 	applyCmd.Flags().BoolVarP(&applyOpts.force, "force", "f", false, "Overwrite dotfile if it was manually modified")
-	rootCmd.AddCommand(applyCmd)
+	return applyCmd
 }

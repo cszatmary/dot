@@ -6,7 +6,7 @@ shed_cache_key: &shed_cache_key dot-tools-20210401-{{ checksum "shed.lock" }}
 jobs:
   lint-build-test:
     docker:
-      - image: cszatmary/cimg-go:1.16
+      - image: cszatmary/cimg-go:1.17
     steps:
       - checkout
       - restore_cache:

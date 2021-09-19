@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/TouchBistro/goutils/file"
 	"github.com/cszatmary/dot/dotfile"
 	"github.com/pkg/errors"
 )
@@ -211,7 +210,7 @@ func (c *Client) Setup(registryDir string, force bool) error {
 		// Backup dotfile, do this before saving the hash and marking this as "setup"
 		c.debugger.Debugf("Creating backup of %s", df.DstPath)
 		backupPath := c.dotfileBackupPath(df)
-		if err := file.CopyFile(df.DstPath, backupPath); err != nil {
+		if err := copyFile(df.DstPath, backupPath); err != nil {
 			return errors.Wrapf(err, "failed to backup %s to %s", df.DstPath, backupPath)
 		}
 
@@ -393,4 +392,38 @@ func expandTilde(p, homeDir string) string {
 		p = filepath.Join(homeDir, base)
 	}
 	return p
+}
+
+// copyFile copies the regular file located at src to dst. Any intermediate directories in dst
+// that do not exists will be created. If src is not a regular file an error will be returned.
+func copyFile(src, dst string) error {
+	info, err := os.Lstat(src)
+	if err != nil {
+		return fmt.Errorf("failed to get info of %q: %w", src, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%q is not a regular file", src)
+	}
+
+	dir := filepath.Dir(dst)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %q: %w", dir, err)
+	}
+
+	f, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
+	if err != nil {
+		return fmt.Errorf("failed to open/create file %q: %w", dst, err)
+	}
+	defer f.Close()
+
+	s, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source file %q: %w", src, err)
+	}
+	defer s.Close()
+
+	if _, err = io.Copy(f, s); err != nil {
+		return fmt.Errorf("failed to copy %q to %q: %w", src, dst, err)
+	}
+	return nil
 }
