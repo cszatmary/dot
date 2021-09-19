@@ -14,12 +14,12 @@ func newCompletionsCommand() *cobra.Command {
 		ValidArgs: []string{"bash", "zsh"},
 		Short:     "Generate shell completions.",
 		Long: `dot completions generates a shell completion script and outputs it to standard output.
-	Supported shells are: bash, zsh.
+Supported shells are: bash, zsh.
 
-	For example to generate and use bash completions:
+For example to generate and use bash completions:
 
-		dot completions bash > /usr/local/etc/bash_completion.d/dot.bash
-		source /usr/local/etc/bash_completion.d/dot.bash`,
+	dot completions bash > /usr/local/etc/bash_completion.d/dot.bash
+	source /usr/local/etc/bash_completion.d/dot.bash`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			shell := args[0]
 			var err error
